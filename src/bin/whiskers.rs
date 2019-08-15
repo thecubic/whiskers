@@ -1,282 +1,181 @@
 extern crate libusb;
 extern crate clap;
 
-use clap::{App, SubCommand};
-use whiskers::all_rfcats;
-
-// // CUTME
-
-
-// impl<'a> RFCatDevice<'a> {
-//     pub fn buildname(&self) -> Result<String, libusb::Error> {
-//         let mut in_vec = Vec::<u8>::with_capacity(self.max_input_size as usize);
-//         let in_buf = unsafe { slice::from_raw_parts_mut((&mut in_vec[..]).as_mut_ptr(), in_vec.capacity()) };
-//         // TODO: packet builder
-//         let outvec = vec![AppMailbox::AppSystem as u8,
-//                           SystemCommand::BuildType as u8,
-//                           0,
-//                           0,];
-//         match self.handle.write_bulk(self.out_endpoint_address, &outvec[..], self.timeout) {
-//             Ok(_) => (),
-//             Err(err) => {
-//                 println!("nope: {}", err);
-//                 return Err(err);
-//             }
-//         }
-//         match self.handle.read_bulk(self.in_endpoint_address, in_buf, self.timeout) {
-//             Ok(rlen) => {
-//                 unsafe { in_vec.set_len(rlen) };
-//                 assert_eq!(in_vec[0], 64);
-//                 assert_eq!(in_vec[1], AppMailbox::AppSystem as u8);
-//                 assert_eq!(in_vec[2], SystemCommand::BuildType as u8);
-//                 let slen = u16::from_le_bytes([in_vec[3], in_vec[4]]);
-//                 let buildname = String::from_utf8(in_vec[5..4+(slen as usize)].to_vec()).unwrap();
-//                 return Ok(buildname);
-//             },
-//             Err(err) => {
-//                 println!("nope: {}", err);
-//                 return Err(err);
-//             }
-//         }
-//     }
-
-//     pub fn bootloader(&self) -> Result<bool, libusb::Error> {
-//         let mut in_vec = Vec::<u8>::with_capacity(self.max_input_size as usize);
-//         let in_buf = unsafe { slice::from_raw_parts_mut((&mut in_vec[..]).as_mut_ptr(), in_vec.capacity()) };
-//         // TODO: packet builder
-//         let outvec = vec![AppMailbox::AppSystem as u8,
-//                           SystemCommand::Bootloader as u8,
-//                           0,
-//                           0,];
-//         match self.handle.write_bulk(self.out_endpoint_address, &outvec[..], self.timeout) {
-//             Ok(_) => (),
-//             Err(err) => {
-//                 println!("nope: {}", err);
-//                 return Err(err);
-//             }
-//         }
-//         match self.handle.read_bulk(self.in_endpoint_address, in_buf, self.timeout) {
-//             Ok(rlen) => {
-//                 unsafe { in_vec.set_len(rlen) };
-//                 assert_eq!(in_vec[0], 64);
-//                 assert_eq!(in_vec[1], AppMailbox::AppSystem as u8);
-//                 assert_eq!(in_vec[2], SystemCommand::Bootloader as u8);
-//                 return Ok(true);
-//             },
-//             Err(err) => {
-//                 println!("nope: {}", err);
-//                 return Err(err);
-//             }
-//         }
-//     }
-
-
-//     pub fn manufacturer(&self) -> Result<String, libusb::Error> {
-//         match self.handle.read_manufacturer_string(self.language.unwrap(), &self.descriptor, self.timeout) {
-//             Ok(mstr) => {
-//                 return Ok(mstr);
-//             },
-//             Err(err) => {
-//                 return Err(err);
-//             }
-//         }
-//     }
-
-//     pub fn product(&self) -> Result<String, libusb::Error> {
-//         match self.handle.read_product_string(self.language.unwrap(), &self.descriptor, self.timeout) {
-//             Ok(pstr) => {
-//                 return Ok(pstr);
-//             },
-//             Err(err) => {
-//                 return Err(err);
-//             }
-//         }
-//     }
-// }
-
-// fn is_rfcat(usbdd: &libusb::DeviceDescriptor) -> bool {
-//     match (usbdd.vendor_id(), usbdd.product_id()) {
-//         // TI
-//         (0x0451, 0x4715) => true,
-//         // PandwaRF
-//         (0x1d50, 0x60ff) => true,
-//         // RFCat
-//         (0x1d50, 0x6047) => true,
-//         (0x1d50, 0x6048) => true,
-//         // YARD Stick One
-//         (0x1d50, 0x605b) => true,
-//         (0x1d50, 0xecc1) => true,
-//         // nope
-//         (_, _) => false,
-//     }
-// }
-
-// fn all_rfcats(context: &libusb::Context) -> Vec<RFCatDevice> {
-//     let mut rfcat_list: Vec<RFCatDevice> = Vec::new();
-//     let devices = match context.devices() {
-//         Ok(k) => k,
-//         Err(err) => {
-//             println!("Error: {}", err);
-//             return rfcat_list;
-//         },
-//     };
-//     for device in devices.iter() {
-//         let device_desc = match device.device_descriptor() {
-//             Ok(k) => k,
-//             Err(err) => {
-//                 println!("Error getting descriptor: {}", err);
-//                 continue
-//             }
-//         };
-//         if is_rfcat(&device_desc) {
-//             let mut handle = match device.open() {
-//                 Ok(k) => k,
-//                 Err(err) => {
-//                     println!("Error opening device: {}", err);
-//                     continue
-//                 }
-//             };
-//             let bus_number = device.bus_number();
-//             let address = device.address();
-//             let vendor_id = device_desc.vendor_id();
-//             let product_id = device_desc.product_id();
-//             let timeout = Duration::from_secs(1);
-//             let langs = match handle.read_languages(timeout) {
-//                 Ok(k) => k,
-//                 Err(err) => {
-//                     println!("Error in reading languages: {}", err);
-//                     continue
-//                 }
-//             };
-//             let language: Option<libusb::Language>;
-//             if langs.len() > 0 {
-//                 language = Some(langs[0]);
-//             } else {
-//                 language = None;
-//             }
-//             let mut in_max_size: u16 = 64;
-//             let mut in_ep_addr: u8 = 0;
-//             let mut out_ep_addr: u8 = 0;
-//             match handle.reset() {
-//                 Ok(k) => k,
-//                 Err(err) => {
-//                     println!("Error resetting device: {}", err);
-//                     continue
-//                 }
-//             };
-//             for n in 0..device_desc.num_configurations() {
-//                 let config_desc = match device.config_descriptor(n) {
-//                     Ok(k) => k,
-//                     Err(_) => continue,
-//                 };
-//                 for interface in config_desc.interfaces() {
-//                     for interface_desc in interface.descriptors() {
-//                         for endpoint_desc in interface_desc.endpoint_descriptors() {
-//                             if endpoint_desc.transfer_type() == libusb::TransferType::Bulk &&
-//                                  endpoint_desc.direction() == libusb::Direction::In {
-//                                 in_ep_addr = endpoint_desc.address();
-//                                 in_max_size = endpoint_desc.max_packet_size();
-//                             }
-//                             if endpoint_desc.transfer_type() == libusb::TransferType::Bulk &&
-//                                  endpoint_desc.direction() == libusb::Direction::Out {
-//                                 out_ep_addr = endpoint_desc.address();
-//                             }
-
-//                         }
-//                     }
-//                 }
-//             }
-//             match handle.set_active_configuration(1) {
-//                 Ok(k) => k,
-//                 Err(err) => {
-//                     println!("Error setting configuration: {}", err);
-//                     continue
-//                 }
-//             }
-//             match handle.claim_interface(0) {
-//                 Ok(k) => k,
-//                 Err(err) => {
-//                     println!("Error claiming interface: {}", err);
-//                     continue
-//                 }
-//             }
-//             match handle.set_alternate_setting(0, 0) {
-//                 Ok(k) => k,
-//                 Err(err) => {
-//                     println!("Error alternate setting: {}", err);
-//                     continue
-//                 }
-//             }
-//             let exdev = RFCatDevice{
-//                 bus_number: bus_number,
-//                 address: address,
-//                 vendor_id: vendor_id,
-//                 product_id: product_id,
-//                 handle: handle,
-//                 descriptor: device_desc,
-//                 language: language,
-//                 timeout: timeout,
-//                 max_input_size: in_max_size,
-//                 in_endpoint_address: in_ep_addr,
-//                 out_endpoint_address: out_ep_addr,
-//             };
-//             rfcat_list.push(exdev);
-//         }
-//     }
-//     rfcat_list
-// }
-// #[allow(dead_code)]
-// enum SystemCommand {
-// 	Peek = 0x80,
-// 	Poke = 0x81,
-// 	Ping = 0x82,
-// 	Status = 0x83,
-// 	PokeRegister = 0x84,
-// 	GetClock = 0x85,
-// 	BuildType = 0x86,
-// 	Bootloader = 0x87,
-// 	RFMode = 0x88,
-// 	Compiler = 0x89,
-// 	PartNum = 0x8e,
-// 	Reset = 0x8f,
-// 	ClearCodes = 0x90,
-// 	LedMode = 0x93,
-// }
-
-// #[allow(dead_code)]
-// enum AppMailbox {
-// 	AppGeneric = 0x01,
-// 	AppDebug = 0xfe,
-// 	AppSystem = 0xff,
-// }
-
-// CUTME
+use clap::{App, SubCommand, Arg, ArgGroup};
+use whiskers::rfcat_filter;
+use std::time::Instant;
 
 fn main() {
     let matches = App::new("whiskers")
-        .version("0.1.0")
+        .version("0.2.0")
         .author("Dave Carlson <thecubic@thecubic.net>")
         .about("RFCat driver application")
         .subcommand(
+            SubCommand::with_name("list")
+                .about("list USB-attached RFCats"))
+        .subcommand(
             SubCommand::with_name("buildname")
-                .about("display the build name"))
+                .about("display the build name")
+                .arg(Arg::with_name("usb-vp")
+                    .help("select specific USB vendor & product combos (format: <vendor hex>,<product hex>)")
+                    .long("usb-vp")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .group(ArgGroup::with_name("usb-select")
+                    .required(true)
+                    .arg("all-usb")
+                    .arg("usb-addr"))
+                .arg(Arg::with_name("usb-addr")
+                    .help("select specific USB addresses (format: <bus nbr>,<dev nbr>)")
+                    .long("usb-addr")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .arg(Arg::with_name("all-usb")
+                    .help("select all USB addresses")
+                    .long("all-usb")
+                    .long("usb-all")
+                    .required(false)))
         .subcommand(
             SubCommand::with_name("compiler")
-                .about("display the compiler info"))
-        .subcommand(
-            SubCommand::with_name("list")
-                .about("list attached RFCats"))
+                .about("display the compiler info")
+                .arg(Arg::with_name("usb-vp")
+                    .help("select specific USB vendor & product combos (format: <vendor hex>,<product hex>)")
+                    .long("usb-vp")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .group(ArgGroup::with_name("usb-select")
+                    .required(true)
+                    .arg("all-usb")
+                    .arg("usb-addr"))
+                .arg(Arg::with_name("usb-addr")
+                    .help("select specific USB addresses (format: <bus nbr>,<dev nbr>)")
+                    .long("usb-addr")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .arg(Arg::with_name("all-usb")
+                    .help("select all USB addresses")
+                    .long("all-usb")
+                    .long("usb-all")
+                    .required(false)))
         .subcommand(
             SubCommand::with_name("bootloader")
-                .about("place rfcats in bootloader mode"))
+                .about("place rfcats in bootloader mode")
+                .arg(Arg::with_name("usb-vp")
+                    .help("select specific USB vendor & product combos (format: <vendor hex>,<product hex>)")
+                    .long("usb-vp")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .group(ArgGroup::with_name("usb-select")
+                    .required(true)
+                    .arg("all-usb")
+                    .arg("usb-addr"))
+                .arg(Arg::with_name("usb-addr")
+                    .help("select specific USB addresses (format: <bus nbr>,<dev nbr>)")
+                    .long("usb-addr")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .arg(Arg::with_name("all-usb")
+                    .help("select all USB addresses")
+                    .long("all-usb")
+                    .long("usb-all")
+                    .required(false)))
         .subcommand(
             SubCommand::with_name("ping")
-                .about("ping the devices"))
+                .about("ping the device(s)")
+                .arg(Arg::with_name("usb-vp")
+                    .help("select specific USB vendor & product combos (format: <vendor hex>,<product hex>)")
+                    .long("usb-vp")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .group(ArgGroup::with_name("usb-select")
+                    .required(true)
+                    .arg("all-usb")
+                    .arg("usb-addr"))
+                .arg(Arg::with_name("usb-addr")
+                    .help("select specific USB addresses (format: <bus nbr>,<dev nbr>)")
+                    .long("usb-addr")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .arg(Arg::with_name("all-usb")
+                    .help("select all USB addresses")
+                    .long("all-usb")
+                    .long("usb-all")
+                    .required(false)))
+        .subcommand(
+            SubCommand::with_name("peektest")
+                .about("peek the device(s)")
+                .arg(Arg::with_name("usb-vp")
+                    .help("select specific USB vendor & product combos (format: <vendor hex>,<product hex>)")
+                    .long("usb-vp")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .group(ArgGroup::with_name("usb-select")
+                    .required(true)
+                    .arg("all-usb")
+                    .arg("usb-addr"))
+                .arg(Arg::with_name("usb-addr")
+                    .help("select specific USB addresses (format: <bus nbr>,<dev nbr>)")
+                    .long("usb-addr")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .arg(Arg::with_name("all-usb")
+                    .help("select all USB addresses")
+                    .long("all-usb")
+                    .long("usb-all")
+                    .required(false)))
+        .subcommand(
+            SubCommand::with_name("has-bootloader")
+                .about("tests for CC-Bootloader")
+                .arg(Arg::with_name("usb-vp")
+                    .help("select specific USB vendor & product combos (format: <vendor hex>,<product hex>)")
+                    .long("usb-vp")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .group(ArgGroup::with_name("usb-select")
+                    .required(true)
+                    .arg("all-usb")
+                    .arg("usb-addr"))
+                .arg(Arg::with_name("usb-addr")
+                    .help("select specific USB addresses (format: <bus nbr>,<dev nbr>)")
+                    .long("usb-addr")
+                    .takes_value(true)
+                    .multiple(true)
+                    .required(false))
+                .arg(Arg::with_name("all-usb")
+                    .help("select all USB addresses")
+                    .long("all-usb")
+                    .long("usb-all")
+                    .required(false)))                
         .get_matches();
     match matches.subcommand_name() {
+        
         Some("buildname") => {
+            let argm = matches.subcommand_matches("buildname").unwrap();
+            /* TODO: for SPI-et-al support, USB must be optional */
             let context = libusb::Context::new().unwrap();
-            let rfcats = all_rfcats(&context);
+            
+            let usb_vp = match argm.is_present("usb-vp") {
+                false => None,
+                true => Some(argm.values_of("usb-vp").unwrap().collect()),
+            };
+
+            let usb_addr = match argm.is_present("usb-addr") {
+                false => None,
+                true => Some(argm.values_of("usb-addr").unwrap().collect()),
+            };
+
+            let rfcats = rfcat_filter(Some(&context), usb_addr, usb_vp);
             for rfcat in rfcats.iter() {
                 println!("RFCat: b{:03} d{:03}d v{:04x} p{:04x}",
                          rfcat.bus_number,
@@ -284,14 +183,28 @@ fn main() {
                          rfcat.vendor_id,
                          rfcat.product_id);
                 match rfcat.buildname() {
-                    Ok(buildname) => println!("  buildname: {}", buildname),
-                    Err(err) => println!("  Error: {}", err),
+                    Ok(Some(buildname)) => {println!("  buildname: {}", buildname)},
+                    Ok(None) => {println!("  no-buildname")},
+                    Err(err) => {println!("  Error: {}", err)},
                 }
             }
         },
         Some("compiler") => {
+            let argm = matches.subcommand_matches("compiler").unwrap();
+            /* TODO: for SPI-et-al support, USB must be optional */
             let context = libusb::Context::new().unwrap();
-            let rfcats = all_rfcats(&context);
+            
+            let usb_vp = match argm.is_present("usb-vp") {
+                false => None,
+                true => Some(argm.values_of("usb-vp").unwrap().collect()),
+            };
+
+            let usb_addr = match argm.is_present("usb-addr") {
+                false => None,
+                true => Some(argm.values_of("usb-addr").unwrap().collect()),
+            };
+
+            let rfcats = rfcat_filter(Some(&context), usb_addr, usb_vp);
             for rfcat in rfcats.iter() {
                 println!("RFCat: b{:03} d{:03}d v{:04x} p{:04x}",
                          rfcat.bus_number,
@@ -299,41 +212,28 @@ fn main() {
                          rfcat.vendor_id,
                          rfcat.product_id);
                 match rfcat.compiler() {
-                    Ok(buildname) => println!("  compiler: {}", buildname),
-                    Err(err) => println!("  Error: {}", err),
-                }
-            }
-        },
-        Some("list") => {
-            let context = libusb::Context::new().unwrap();
-            let rfcats = all_rfcats(&context);
-            for rfcat in rfcats.iter() {
-                println!("RFCat: b{:03} d{:03} v{:04x} p{:04x}",
-                         rfcat.bus_number,
-                         rfcat.address,
-                         rfcat.vendor_id,
-                         rfcat.product_id);
-                match rfcat.manufacturer() {
-                    Ok(mstr) => {
-                        println!("  {}", mstr);
-                    },
-                    Err(err) => {
-                        println!("  Error: {}", err);
-                    },
-                }
-                match rfcat.product() {
-                    Ok(pstr) => {
-                        println!("  {}", pstr);
-                    },
-                    Err(err) => {
-                        println!("  Error: {}", err);
-                    },
+                    Ok(Some(compiler)) => {println!("  compiler: {}", compiler)},
+                    Ok(None) => {println!("  no-compiler")},
+                    Err(err) => {println!("  Error: {}", err)},
                 }
             }
         },
         Some("bootloader") => {
+            let argm = matches.subcommand_matches("ping").unwrap();
+            /* TODO: for SPI-et-al support, USB must be optional */
             let context = libusb::Context::new().unwrap();
-            let rfcats = all_rfcats(&context);
+            
+            let usb_vp = match argm.is_present("usb-vp") {
+                false => None,
+                true => Some(argm.values_of("usb-vp").unwrap().collect()),
+            };
+
+            let usb_addr = match argm.is_present("usb-addr") {
+                false => None,
+                true => Some(argm.values_of("usb-addr").unwrap().collect()),
+            };
+
+            let rfcats = rfcat_filter(Some(&context), usb_addr, usb_vp);
             for rfcat in rfcats.iter() {
                 println!("RFCat: b{:03} d{:03} v{:04x} p{:04x}",
                          rfcat.bus_number,
@@ -351,9 +251,24 @@ fn main() {
             }
         },
         Some("ping") => {
+            let argm = matches.subcommand_matches("ping").unwrap();
+            /* TODO: for SPI-et-al support, USB must be optional */
             let context = libusb::Context::new().unwrap();
-            let rfcats = all_rfcats(&context);
+            
+            let usb_vp = match argm.is_present("usb-vp") {
+                false => None,
+                true => Some(argm.values_of("usb-vp").unwrap().collect()),
+            };
+
+            let usb_addr = match argm.is_present("usb-addr") {
+                false => None,
+                true => Some(argm.values_of("usb-addr").unwrap().collect()),
+            };
+
+            let rfcats = rfcat_filter(Some(&context), usb_addr, usb_vp);
+
             for rfcat in rfcats.iter() {
+                let pre = Instant::now();
                 println!("RFCat: b{:03} d{:03} v{:04x} p{:04x}",
                          rfcat.bus_number,
                          rfcat.address,
@@ -361,14 +276,85 @@ fn main() {
                          rfcat.product_id);
                 match rfcat.ping() {
                     Ok(oktho) => {
-                        println!("  {}", oktho);
+                        println!("  {} ({} us)", oktho, pre.elapsed().as_micros());
                     },
                     Err(err) => {
                         println!("  Error: {}", err);
                     },
                 }
             }
-        }
+        },
+        Some("peektest") => {
+            let argm = matches.subcommand_matches("peek").unwrap();
+            /* TODO: for SPI-et-al support, USB must be optional */
+            let context = libusb::Context::new().unwrap();
+            
+            let usb_vp = match argm.is_present("usb-vp") {
+                false => None,
+                true => Some(argm.values_of("usb-vp").unwrap().collect()),
+            };
+
+            let usb_addr = match argm.is_present("usb-addr") {
+                false => None,
+                true => Some(argm.values_of("usb-addr").unwrap().collect()),
+            };
+
+            let rfcats = rfcat_filter(Some(&context), usb_addr, usb_vp);
+
+            for rfcat in rfcats.iter() {
+                let pre = Instant::now();
+                println!("RFCat: b{:03} d{:03} v{:04x} p{:04x}",
+                         rfcat.bus_number,
+                         rfcat.address,
+                         rfcat.vendor_id,
+                         rfcat.product_id);
+                match rfcat.peek(0xDF46, 2) {
+                    Ok(data) => {
+                        println!("  {} ({} us)", data.len(), pre.elapsed().as_micros());
+                        if data.len() == 2 {
+                            println!("  {} {}", data[0], data[1]);
+                        }
+                    },
+                    Err(err) => {
+                        println!("  Error: {}", err);
+                    },
+                }
+            }
+        },
+        Some("has-bootloader") => {
+            let argm = matches.subcommand_matches("has-bootloader").unwrap();
+            /* TODO: for SPI-et-al support, USB must be optional */
+            let context = libusb::Context::new().unwrap();
+            
+            let usb_vp = match argm.is_present("usb-vp") {
+                false => None,
+                true => Some(argm.values_of("usb-vp").unwrap().collect()),
+            };
+
+            let usb_addr = match argm.is_present("usb-addr") {
+                false => None,
+                true => Some(argm.values_of("usb-addr").unwrap().collect()),
+            };
+
+            let rfcats = rfcat_filter(Some(&context), usb_addr, usb_vp);
+
+            for rfcat in rfcats.iter() {
+                let pre = Instant::now();
+                println!("RFCat: b{:03} d{:03} v{:04x} p{:04x}",
+                         rfcat.bus_number,
+                         rfcat.address,
+                         rfcat.vendor_id,
+                         rfcat.product_id);
+                match rfcat.has_bootloader() {
+                    Ok(bootloader) => {
+                        println!("  {} ({} us)", bootloader, pre.elapsed().as_micros());
+                    },
+                    Err(err) => {
+                        println!("  Error: {}", err);
+                    },
+                }
+            }
+        },
         None | _ => (),
     }
 }

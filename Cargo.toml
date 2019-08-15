@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 libusb = "0.3"
 clap = "2.33.0"
+queues = "1.1.0"
